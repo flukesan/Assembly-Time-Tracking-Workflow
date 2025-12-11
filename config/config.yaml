@@ -1,0 +1,122 @@
+# Assembly Time-Tracking System Configuration
+
+# Application Settings
+app:
+  name: "Assembly Time-Tracking System"
+  version: "1.0.0"
+  environment: "development"  # development, staging, production
+  debug: true
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Camera Configuration
+cameras:
+  enabled: false  # Set to true when cameras are ready
+  fps_target: 15  # Processing FPS (lower than capture for performance)
+  capture_fps: 30  # Actual camera capture FPS
+  buffer_size: 3  # Frame buffer size per camera
+  reconnect_timeout: 30  # Seconds before reconnect attempt
+  max_reconnect_attempts: 5
+
+# Detection Configuration
+detection:
+  model: "yolov8n.pt"  # yolov8n (nano), yolov8s (small), yolov8m (medium)
+  confidence_threshold: 0.6
+  iou_threshold: 0.45
+  device: "cuda"  # cuda or cpu
+  half_precision: true  # FP16 for faster inference
+  batch_size: 4  # Batch size for multi-camera
+
+# Tracking Configuration
+tracking:
+  tracker: "bytetrack"  # bytetrack or deepsort
+  max_age: 30  # Frames to keep track alive without detection
+  min_hits: 3  # Minimum hits before confirming track
+  iou_threshold: 0.3
+
+# Zone Configuration
+zones:
+  point_tolerance: 5  # Pixels tolerance for point-in-polygon
+  snap_to_grid: true
+  grid_size: 10  # Pixels
+
+# Time Tracking Configuration
+time_tracking:
+  idle_threshold_seconds: 60  # Seconds before marking as idle
+  motion_threshold_pixels: 10  # Pixel movement threshold
+  session_timeout_seconds: 300  # Session timeout if no activity
+
+# Index Configuration
+index:
+  total_indices: 11
+  auto_calculate: true
+  index_duration_minutes: 46  # Approximate duration per index
+
+# Database Configuration (overridden by .env)
+database:
+  pool_size: 10
+  max_overflow: 5
+  pool_recycle: 3600
+  echo: false  # SQL query logging
+
+# Redis Configuration
+redis:
+  db: 0
+  decode_responses: true
+  socket_timeout: 5
+  socket_connect_timeout: 5
+
+# Qdrant Configuration
+qdrant:
+  vector_size: 768
+  distance: "Cosine"
+  timeout: 60
+
+# RAG Configuration
+rag:
+  embedding_model: "paraphrase-multilingual-mpnet-base-v2"
+  top_k: 5
+  score_threshold: 0.7
+  max_context_length: 4000
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1  # Uvicorn workers
+  reload: true  # Auto-reload on code changes (dev only)
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"
+
+# Alert Configuration
+alerts:
+  enabled: true
+  channels:
+    - "in_app"
+    - "email"
+  email:
+    smtp_server: "smtp.gmail.com"
+    smtp_port: 587
+    sender: "noreply@example.com"
+  thresholds:
+    idle_seconds: 60
+    zone_empty_minutes: 5
+    productivity_drop_percent: 20
+
+# UI Configuration
+ui:
+  theme: "dark"  # dark or light
+  language: "th"  # th or en
+  refresh_rate_ms: 100  # UI refresh rate (10 FPS)
+  grid_layout: "2x2"  # 1x1, 2x1, 2x2
+
+# Performance Configuration
+performance:
+  enable_profiling: false
+  gc_interval_seconds: 300  # Python garbage collection interval
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  prometheus_port: 9090
+  health_check_interval: 30  # Seconds
