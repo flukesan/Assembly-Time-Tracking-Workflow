@@ -138,6 +138,8 @@ services:
       - ./src:/app/src
       - ./config:/app/config
       - ./logs:/app/logs
+      - ./scripts:/app/scripts
+      - ./models:/app/models
       - ./data/recordings:/app/data/recordings
       # Mount camera devices (if using USB cameras)
       # - /dev:/dev
