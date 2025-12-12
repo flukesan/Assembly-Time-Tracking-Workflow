@@ -60,19 +60,42 @@ nano .env
 
 ### ขั้นตอนที่ 2: Start All Services
 
+**⚠️ สำคัญ: เลือก mode ที่เหมาะสม**
+
+#### Option A: GPU Mode (ถ้ามี NVIDIA GPU + Driver)
+
 ```bash
-# สร้างและ start services ทั้งหมด
+# Start with GPU support
 docker compose up -d --build
 
-# ดู logs แบบ real-time
+# ดู logs
 docker compose logs -f
+```
 
-# หรือดู logs แยก service
+#### Option B: CPU Mode (แนะนำสำหรับ Testing/Development)
+
+```bash
+# Start with CPU only (ไม่ต้องมี GPU)
+docker compose -f docker-compose.cpu.yml up -d --build
+
+# ดู logs
+docker compose -f docker-compose.cpu.yml logs -f
+```
+
+**💡 คำแนะนำ:**
+- ถ้าเจอ error `libnvidia-ml.so.1: cannot open shared object file` → ใช้ **CPU Mode**
+- Phase 1 ทดสอบได้ทั้ง GPU และ CPU mode
+- CPU mode เพียงพอสำหรับ Phase 1-3 (Foundation + Detection + Zone)
+
+**ดู logs แยก service:**
+```bash
+# สำหรับ CPU mode (เพิ่ม -f docker-compose.cpu.yml)
+docker compose -f docker-compose.cpu.yml logs -f app
+docker compose -f docker-compose.cpu.yml logs -f postgresql
+
+# สำหรับ GPU mode (ปกติ)
 docker compose logs -f app
 docker compose logs -f postgresql
-docker compose logs -f qdrant
-docker compose logs -f redis
-docker compose logs -f ollama
 ```
 
 ### ขั้นตอนที่ 3: Verify Services
