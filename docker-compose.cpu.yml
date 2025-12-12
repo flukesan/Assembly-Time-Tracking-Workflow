@@ -40,10 +40,11 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:6333/health"]
+      test: ["CMD-SHELL", "timeout 10 bash -c ':> /dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 40s
 
   # Redis Cache
   redis:
@@ -58,10 +59,11 @@ services:
       - app-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a change_me_redis_password ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
 
   # Ollama (DeepSeek-R1:14B) - CPU MODE
   ollama:
@@ -85,11 +87,7 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    # No health check - optional service for Phase 1
 
   # Main Application - CPU MODE
   app:
