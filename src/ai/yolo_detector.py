@@ -48,7 +48,8 @@ class YOLODetector:
             "toothbrush"
         ]
 
-        self._load_model()
+        # Don't load model at startup - use lazy loading
+        logger.info(f"YOLODetector initialized (model will load on first use)")
 
     def _load_model(self):
         """Load YOLOv8 model"""
@@ -86,8 +87,10 @@ class YOLODetector:
         if timestamp is None:
             timestamp = datetime.now()
 
+        # Lazy load model on first use
         if self.model is None:
-            raise RuntimeError("YOLOv8 model not loaded")
+            logger.info("Model not loaded yet, loading now...")
+            self._load_model()
 
         self._frame_counter += 1
         frame_height, frame_width = frame.shape[:2]
