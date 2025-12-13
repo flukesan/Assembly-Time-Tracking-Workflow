@@ -1,6 +1,7 @@
 """
 Detection Manager
 Coordinates camera capture and YOLOv8 detection
+Phase 3: Added tracking integration
 """
 
 import threading
@@ -14,6 +15,7 @@ from ai.yolo_detector import YOLODetector
 from ai.detection_models import DetectionConfig, DetectionResult
 from core.zones.zone_manager import ZoneManager
 from core.zones.zone_detector import ZoneDetector
+from tracking.tracking_manager import TrackingManager
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +27,8 @@ class DetectionManager:
         self,
         camera_manager: CameraManager,
         zone_manager: ZoneManager,
-        detection_config: DetectionConfig
+        detection_config: DetectionConfig,
+        tracking_manager: Optional[TrackingManager] = None
     ):
         """
         Initialize detection manager
@@ -34,10 +37,12 @@ class DetectionManager:
             camera_manager: Camera manager instance
             zone_manager: Zone manager instance
             detection_config: YOLOv8 detection configuration
+            tracking_manager: Optional tracking manager for Phase 3
         """
         self.camera_manager = camera_manager
         self.zone_manager = zone_manager
         self.detection_config = detection_config
+        self.tracking_manager = tracking_manager
 
         # Initialize detector
         self.detector = YOLODetector(detection_config)
@@ -50,7 +55,7 @@ class DetectionManager:
         # Callbacks
         self.detection_callbacks = []
 
-        logger.info("DetectionManager initialized")
+        logger.info(f"DetectionManager initialized (tracking={'enabled' if tracking_manager else 'disabled'})")
 
     def add_detection_callback(self, callback):
         """
@@ -174,6 +179,21 @@ class DetectionManager:
                     zone_id: [det.dict() for det in dets]
                     for zone_id, dets in zone_matches.items()
                 }
+
+                # Phase 3: Run tracking if enabled
+                if self.tracking_manager:
+                    try:
+                        tracked_objects = self.tracking_manager.update(
+                            camera_id=camera_id,
+                            detections=detection_result.detections,
+                            timestamp=timestamp
+                        )
+                        result_dict['tracked_objects'] = [obj.dict() for obj in tracked_objects]
+                        result_dict['track_count'] = len(tracked_objects)
+                    except Exception as e:
+                        logger.error(f"Tracking error for camera {camera_id}: {e}")
+                        result_dict['tracked_objects'] = []
+                        result_dict['track_count'] = 0
 
                 # Call callbacks
                 for callback in self.detection_callbacks:
