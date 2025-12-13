@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict
 import logging
 
 from .zone_models import Zone
-from ...ai.detection_models import Detection
+from ai.detection_models import Detection
 
 logger = logging.getLogger(__name__)
 

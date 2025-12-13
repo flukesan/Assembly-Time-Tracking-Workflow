@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List, Dict
 from pydantic import BaseModel
 
-from ...camera.camera_config import CameraConfig, CameraStatus
+from camera.camera_config import CameraConfig, CameraStatus
 
 router = APIRouter(prefix="/api/v1/cameras", tags=["cameras"])
 
