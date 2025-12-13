@@ -9,11 +9,11 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import logging
 
-from ..camera.camera_manager import CameraManager
-from ..ai.yolo_detector import YOLODetector
-from ..ai.detection_models import DetectionConfig, DetectionResult
-from ..core.zones.zone_manager import ZoneManager
-from ..core.zones.zone_detector import ZoneDetector
+from camera.camera_manager import CameraManager
+from ai.yolo_detector import YOLODetector
+from ai.detection_models import DetectionConfig, DetectionResult
+from core.zones.zone_manager import ZoneManager
+from core.zones.zone_detector import ZoneDetector
 
 logger = logging.getLogger(__name__)
 

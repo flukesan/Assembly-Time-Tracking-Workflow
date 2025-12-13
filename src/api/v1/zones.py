@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from typing import List, Tuple
 from pydantic import BaseModel
 
-from ...core.zones.zone_models import Zone, ZoneType
+from core.zones.zone_models import Zone, ZoneType
 
 router = APIRouter(prefix="/api/v1/zones", tags=["zones"])
 
