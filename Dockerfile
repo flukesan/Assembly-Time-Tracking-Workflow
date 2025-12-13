@@ -47,8 +47,8 @@ WORKDIR /app
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# Install numpy first (required by lap package)
-RUN pip3 install --no-cache-dir numpy==1.26.3
+# Install numpy and Cython first (required by lap package)
+RUN pip3 install --no-cache-dir numpy==1.26.3 Cython
 
 # Install lap with --no-build-isolation (allows access to numpy)
 RUN pip3 install --no-cache-dir --no-build-isolation lap==0.4.0
