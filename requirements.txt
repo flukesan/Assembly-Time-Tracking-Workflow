@@ -39,7 +39,7 @@ supervision==0.18.0
 filterpy==1.4.5
 scikit-learn==1.4.0
 scipy==1.12.0
-lap==0.4.0  # Linear Assignment Problem solver for ByteTrack
+# lap==0.4.0  # Installed separately in Dockerfile (requires numpy pre-installed)
 
 # AI/ML - NLP & Embeddings
 sentence-transformers==2.3.1
