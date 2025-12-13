@@ -50,8 +50,8 @@ COPY requirements.txt .
 # Install numpy first (required by lap package)
 RUN pip3 install --no-cache-dir numpy==1.26.3
 
-# Install lap separately (requires numpy to be pre-installed)
-RUN pip3 install --no-cache-dir lap==0.4.0
+# Install lap with --no-build-isolation (allows access to numpy)
+RUN pip3 install --no-cache-dir --no-build-isolation lap==0.4.0
 
 # Install remaining Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
