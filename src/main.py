@@ -1,6 +1,6 @@
 """
 Assembly Time-Tracking System - Main Entry Point
-Phase 3: Multi-Camera + Object Tracking
+Phase 4: Worker Identification + Time Tracking
 """
 
 import sys
@@ -26,8 +26,14 @@ from data.database import DatabaseManager
 from data.detection_writer import DetectionWriter
 from data.tracking_writer import TrackingWriter
 
+# Phase 4: Worker identification and time tracking
+from workers.worker_manager import WorkerManager
+from identification.face_recognition import FaceRecognizer
+from identification.badge_ocr import BadgeOCR
+from time_tracking.time_tracker import TimeTracker
+
 # Import API routers
-from api.v1 import cameras, detection, zones, tracking
+from api.v1 import cameras, detection, zones, tracking, workers
 
 # Global managers
 camera_manager = None
@@ -38,11 +44,17 @@ db_manager = None
 detection_writer = None
 tracking_writer = None
 
+# Phase 4: Worker and time tracking managers
+worker_manager = None
+face_recognizer = None
+badge_ocr = None
+time_tracker = None
+
 # Application instance
 app = FastAPI(
     title="Assembly Time-Tracking System",
-    description="Real-time worker tracking and productivity analysis",
-    version="2.0.0"
+    description="Real-time worker tracking and productivity analysis with face recognition",
+    version="4.0.0"
 )
 
 # CORS middleware
@@ -60,9 +72,9 @@ async def root():
     """Root endpoint"""
     return {
         "message": "Assembly Time-Tracking System",
-        "version": "3.0.0",
+        "version": "4.0.0",
         "status": "running",
-        "phase": "Phase 3 - Multi-Camera + Tracking"
+        "phase": "Phase 4 - Worker Identification + Time Tracking"
     }
 
 
@@ -101,11 +113,12 @@ async def startup_event():
     """Application startup"""
     global camera_manager, zone_manager, tracking_manager, detection_manager
     global db_manager, detection_writer, tracking_writer
+    global worker_manager, face_recognizer, badge_ocr, time_tracker
 
     logger.info("=" * 60)
     logger.info("Assembly Time-Tracking System - Starting Up")
     logger.info("=" * 60)
-    logger.info("Phase: 3 - Multi-Camera + Tracking")
+    logger.info("Phase: 4 - Worker Identification + Time Tracking")
     logger.info("Status: Development Mode")
     logger.info("-" * 60)
 
@@ -148,6 +161,31 @@ async def startup_event():
     tracking_manager.add_tracking_callback(on_tracked_object)
     tracking_manager.add_transition_callback(on_zone_transition)
 
+    # Phase 4: Initialize worker identification and time tracking
+    logger.info("👤 Initializing Worker Manager...")
+    worker_manager = WorkerManager()
+
+    logger.info("😊 Initializing Face Recognizer...")
+    face_recognizer = FaceRecognizer(
+        device="cpu",  # Use CPU mode (can be changed to "cuda" for GPU)
+        min_face_size=40,
+        detection_threshold=0.9
+    )
+
+    logger.info("🎫 Initializing Badge OCR...")
+    badge_ocr = BadgeOCR(
+        languages=['th', 'en'],  # Thai + English support
+        gpu=False,
+        min_confidence=0.3
+    )
+
+    logger.info("⏱️  Initializing Time Tracker...")
+    time_tracker = TimeTracker(
+        idle_threshold_seconds=300,  # 5 minutes
+        break_zone_names=["Break Area", "Rest Zone", "Cafeteria"],
+        target_output_per_hour=10.0
+    )
+
     logger.info("🤖 Initializing YOLOv8 Detection...")
     detection_config = DetectionConfig(
         model_name="yolov8n.pt",
@@ -170,21 +208,32 @@ async def startup_event():
     tracking.set_tracking_manager(tracking_manager)
     tracking.set_tracking_writer(tracking_writer)
 
+    # Phase 4: Inject worker and time tracking managers
+    workers.set_worker_manager(worker_manager)
+    workers.set_time_tracker(time_tracker)
+    workers.set_face_recognizer(face_recognizer)
+    workers.set_badge_ocr(badge_ocr)
+
     # Register API routers
     app.include_router(cameras.router)
     app.include_router(zones.router)
     app.include_router(detection.router)
     app.include_router(tracking.router)
+    app.include_router(workers.router)  # Phase 4: Worker API
 
     logger.info("-" * 60)
-    logger.info("✅ Phase 3 Tracking system started successfully!")
+    logger.info("✅ Phase 4 Worker Identification system started successfully!")
     logger.info("🌐 API running on http://0.0.0.0:8000")
     logger.info("📚 API docs at http://0.0.0.0:8000/docs")
     logger.info("🎥 Camera API: http://0.0.0.0:8000/api/v1/cameras")
     logger.info("🤖 Detection API: http://0.0.0.0:8000/api/v1/detection")
     logger.info("🏗️  Zone API: http://0.0.0.0:8000/api/v1/zones")
     logger.info("🎯 Tracking API: http://0.0.0.0:8000/api/v1/tracking")
+    logger.info("👤 Worker API: http://0.0.0.0:8000/api/v1/workers")
     logger.info("💾 PostgreSQL: Connected")
+    logger.info("😊 Face Recognition: Initialized")
+    logger.info("🎫 Badge OCR: Initialized (Thai + English)")
+    logger.info("⏱️  Time Tracking: Active")
     logger.info("=" * 60)
 
 
