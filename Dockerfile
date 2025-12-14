@@ -1,19 +1,21 @@
-FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8 \
-    CUDA_VISIBLE_DEVICES="" \
-    TORCH_DEVICE=cpu
+    LC_ALL=C.UTF-8
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     # Python
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update && apt-get install -y \
     python3.11 \
+    python3.11-dev \
+    python3.11-distutils \
     python3-pip \
-    python3-dev \
     build-essential \
     # Database
     libpq-dev \
@@ -40,8 +42,12 @@ RUN apt-get update && apt-get install -y \
     htop \
     && rm -rf /var/lib/apt/lists/*
 
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --set python3 /usr/bin/python3.11
+
 # Upgrade pip
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Set working directory
 WORKDIR /app
@@ -50,20 +56,20 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install numpy and Cython first (required by lap package)
-RUN pip3 install --no-cache-dir numpy==1.26.3 Cython
+RUN python3 -m pip install --no-cache-dir numpy==1.26.3 Cython
 
 # Install lap with setuptools < 60.0 (for numpy.distutils compatibility)
-RUN pip3 install --no-cache-dir "setuptools<60.0" && \
-    pip3 install --no-cache-dir --no-build-isolation lap==0.4.0
+RUN python3 -m pip install --no-cache-dir "setuptools<60.0" && \
+    python3 -m pip install --no-cache-dir --no-build-isolation lap==0.4.0
 
 # Install PyTorch CPU version (override default CUDA version)
-RUN pip3 install --no-cache-dir \
+RUN python3 -m pip install --no-cache-dir \
     torch==2.1.2+cpu \
     torchvision==0.16.2+cpu \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining Python dependencies (skip torch/torchvision as already installed)
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
