@@ -11,12 +11,14 @@ from loguru import logger
 
 from analytics.realtime_analytics import RealtimeAnalytics, EventType
 from analytics.predictive_analytics import PredictiveAnalytics
+from analytics.visualization_data import VisualizationData
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
 # Global instances (will be injected)
 realtime_analytics: Optional[RealtimeAnalytics] = None
 predictive_analytics: Optional[PredictiveAnalytics] = None
+visualization_data: Optional[VisualizationData] = None
 
 
 def set_realtime_analytics(analytics: RealtimeAnalytics):
@@ -29,6 +31,12 @@ def set_predictive_analytics(analytics: PredictiveAnalytics):
     """Inject predictive analytics instance"""
     global predictive_analytics
     predictive_analytics = analytics
+
+
+def set_visualization_data(viz_data: VisualizationData):
+    """Inject visualization data instance"""
+    global visualization_data
+    visualization_data = viz_data
 
 
 # Pydantic models
@@ -470,4 +478,221 @@ async def predict_worker_performance(
         raise
     except Exception as e:
         logger.error(f"Error predicting worker performance: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Visualization Data Endpoints
+# ============================================================================
+
+@router.post("/visualize/heatmap")
+async def generate_heatmap(
+    data: List[Dict[str, Any]],
+    x_axis: str = Query("hour", description="X-axis dimension"),
+    y_axis: str = Query("worker", description="Y-axis dimension"),
+    value_field: str = Query("productivity", description="Value field")
+):
+    """
+    Generate productivity heatmap data
+
+    Args:
+        data: List of productivity records
+        x_axis: X-axis dimension (hour, day, week)
+        y_axis: Y-axis dimension (worker, zone, shift)
+        value_field: Field to visualize
+
+    Returns:
+        Heatmap data structure
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        heatmap = visualization_data.generate_productivity_heatmap(
+            data=data,
+            x_axis=x_axis,
+            y_axis=y_axis,
+            value_field=value_field
+        )
+
+        return heatmap
+
+    except Exception as e:
+        logger.error(f"Error generating heatmap: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/visualize/time-series")
+async def generate_time_series(
+    data: List[Dict[str, Any]],
+    time_field: str = Query("timestamp", description="Time field"),
+    value_fields: Optional[List[str]] = Query(None, description="Value fields to plot"),
+    aggregation: str = Query("mean", description="Aggregation method"),
+    interval: str = Query("hour", description="Time interval")
+):
+    """
+    Generate time-series chart data
+
+    Args:
+        data: List of records with timestamps
+        time_field: Field containing timestamp
+        value_fields: Fields to plot
+        aggregation: Aggregation method (mean, sum, count, min, max)
+        interval: Time interval (hour, day, week, month)
+
+    Returns:
+        Time-series chart data
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        chart = visualization_data.generate_time_series_chart(
+            data=data,
+            time_field=time_field,
+            value_fields=value_fields,
+            aggregation=aggregation,
+            interval=interval
+        )
+
+        return chart
+
+    except Exception as e:
+        logger.error(f"Error generating time-series: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/visualize/distribution")
+async def generate_distribution(
+    data: List[float],
+    bins: int = Query(10, ge=5, le=50, description="Number of bins"),
+    value_name: str = Query("value", description="Value name")
+):
+    """
+    Generate distribution chart data (histogram)
+
+    Args:
+        data: List of values
+        bins: Number of bins (5-50)
+        value_name: Name of the value
+
+    Returns:
+        Distribution chart data with statistics
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        distribution = visualization_data.generate_distribution_chart(
+            data=data,
+            bins=bins,
+            value_name=value_name
+        )
+
+        return distribution
+
+    except Exception as e:
+        logger.error(f"Error generating distribution: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/visualize/correlation")
+async def generate_correlation(
+    data: List[Dict[str, float]],
+    fields: Optional[List[str]] = Query(None, description="Fields to correlate")
+):
+    """
+    Generate correlation matrix
+
+    Args:
+        data: List of records with numeric fields
+        fields: Fields to correlate (if None, use all numeric fields)
+
+    Returns:
+        Correlation matrix
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        correlation = visualization_data.generate_correlation_matrix(
+            data=data,
+            fields=fields
+        )
+
+        return correlation
+
+    except Exception as e:
+        logger.error(f"Error generating correlation matrix: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/visualize/comparison")
+async def generate_comparison(
+    data: List[Dict[str, Any]],
+    group_by: str = Query(..., description="Field to group by"),
+    value_field: str = Query(..., description="Field to aggregate"),
+    aggregation: str = Query("mean", description="Aggregation method")
+):
+    """
+    Generate comparison chart data (bar chart)
+
+    Args:
+        data: List of records
+        group_by: Field to group by
+        value_field: Field to aggregate
+        aggregation: Aggregation method
+
+    Returns:
+        Comparison chart data
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        comparison = visualization_data.generate_comparison_chart(
+            data=data,
+            group_by=group_by,
+            value_field=value_field,
+            aggregation=aggregation
+        )
+
+        return comparison
+
+    except Exception as e:
+        logger.error(f"Error generating comparison chart: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/visualize/gauge")
+async def generate_gauge(
+    current_value: float = Query(..., description="Current value"),
+    min_value: float = Query(0, description="Minimum value"),
+    max_value: float = Query(100, description="Maximum value")
+):
+    """
+    Generate gauge chart data
+
+    Args:
+        current_value: Current value
+        min_value: Minimum value
+        max_value: Maximum value
+
+    Returns:
+        Gauge chart data
+    """
+    if not visualization_data:
+        raise HTTPException(status_code=503, detail="Visualization data not initialized")
+
+    try:
+        gauge = visualization_data.generate_gauge_chart(
+            current_value=current_value,
+            min_value=min_value,
+            max_value=max_value
+        )
+
+        return gauge
+
+    except Exception as e:
+        logger.error(f"Error generating gauge chart: {e}")
         raise HTTPException(status_code=500, detail=str(e))

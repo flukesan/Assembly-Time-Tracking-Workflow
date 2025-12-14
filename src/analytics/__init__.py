@@ -6,8 +6,10 @@ predictive analytics, visualization data, and performance benchmarking.
 
 from .realtime_analytics import RealtimeAnalytics
 from .predictive_analytics import PredictiveAnalytics
+from .visualization_data import VisualizationData
 
 __all__ = [
     "RealtimeAnalytics",
     "PredictiveAnalytics",
+    "VisualizationData",
 ]
