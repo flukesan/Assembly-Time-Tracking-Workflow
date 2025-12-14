@@ -4,7 +4,9 @@ FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
+    LC_ALL=C.UTF-8 \
+    CUDA_VISIBLE_DEVICES="" \
+    TORCH_DEVICE=cpu
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -54,7 +56,13 @@ RUN pip3 install --no-cache-dir numpy==1.26.3 Cython
 RUN pip3 install --no-cache-dir "setuptools<60.0" && \
     pip3 install --no-cache-dir --no-build-isolation lap==0.4.0
 
-# Install remaining Python dependencies
+# Install PyTorch CPU version (override default CUDA version)
+RUN pip3 install --no-cache-dir \
+    torch==2.1.2+cpu \
+    torchvision==0.16.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies (skip torch/torchvision as already installed)
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy application code
