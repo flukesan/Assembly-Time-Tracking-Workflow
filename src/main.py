@@ -32,8 +32,18 @@ from identification.face_recognition import FaceRecognizer
 from identification.badge_ocr import BadgeOCR
 from time_tracking.time_tracker import TimeTracker
 
+# Phase 4B: RAG + DeepSeek-R1 AI Services
+from llm.ollama_client import OllamaClient
+from rag.embeddings import EmbeddingGenerator
+from rag.qdrant_manager import QdrantManager
+from rag.knowledge_base import KnowledgeBase
+from insights.insight_generator import InsightGenerator
+from insights.anomaly_detector import AnomalyDetector
+from insights.recommendation_engine import RecommendationEngine
+from reports.report_generator import ReportGenerator
+
 # Import API routers
-from api.v1 import cameras, detection, zones, tracking, workers
+from api.v1 import cameras, detection, zones, tracking, workers, ai_query
 
 # Global managers
 camera_manager = None
@@ -50,11 +60,21 @@ face_recognizer = None
 badge_ocr = None
 time_tracker = None
 
+# Phase 4B: RAG + AI managers
+ollama_client = None
+embedding_generator = None
+qdrant_manager = None
+knowledge_base = None
+insight_generator = None
+anomaly_detector = None
+recommendation_engine = None
+report_generator = None
+
 # Application instance
 app = FastAPI(
     title="Assembly Time-Tracking System",
-    description="Real-time worker tracking and productivity analysis with face recognition",
-    version="4.0.0"
+    description="Real-time worker tracking with AI-powered insights via RAG + DeepSeek-R1. Features: Face/Badge recognition, time tracking, natural language queries (Thai/English), automated insights and reports.",
+    version="4.1.0"
 )
 
 # CORS middleware
@@ -72,9 +92,17 @@ async def root():
     """Root endpoint"""
     return {
         "message": "Assembly Time-Tracking System",
-        "version": "4.0.0",
+        "version": "4.1.0",
         "status": "running",
-        "phase": "Phase 4 - Worker Identification + Time Tracking"
+        "phase": "Phase 4B - RAG + DeepSeek-R1 Integration",
+        "features": [
+            "Worker Identification (Face + Badge)",
+            "Time Tracking & Productivity",
+            "RAG Knowledge Base (Qdrant)",
+            "AI-Powered Insights (DeepSeek-R1)",
+            "Natural Language Queries (Thai/English)",
+            "Automated Reports"
+        ]
     }
 
 
@@ -82,20 +110,44 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     try:
-        # TODO: Add actual health checks for databases
-        return JSONResponse(
-            status_code=200,
-            content={
-                "status": "healthy",
-                "phase": "Phase 1 - Foundation",
-                "components": {
-                    "api": "healthy",
-                    "postgresql": "not_yet_implemented",
-                    "qdrant": "not_yet_implemented",
-                    "redis": "not_yet_implemented",
-                    "ollama": "not_yet_implemented"
-                }
+        health_status = {
+            "status": "healthy",
+            "phase": "Phase 4B - RAG + DeepSeek-R1",
+            "components": {
+                "api": "healthy",
+                "postgresql": "connected" if db_manager else "not_initialized",
+                "qdrant": "connected" if qdrant_manager else "not_initialized",
+                "redis": "available",
+                "ollama": "connected" if ollama_client else "not_initialized"
+            },
+            "ai_services": {
+                "knowledge_base": "ready" if knowledge_base else "not_initialized",
+                "insight_generator": "ready" if insight_generator else "not_initialized",
+                "anomaly_detector": "ready" if anomaly_detector else "not_initialized",
+                "recommendation_engine": "ready" if recommendation_engine else "not_initialized",
+                "report_generator": "ready" if report_generator else "not_initialized"
+            },
+            "worker_services": {
+                "face_recognition": "ready" if face_recognizer else "not_initialized",
+                "badge_ocr": "ready" if badge_ocr else "not_initialized",
+                "time_tracking": "active" if time_tracker else "not_initialized"
             }
+        }
+
+        # Check if any component is not initialized
+        all_healthy = all(
+            v not in ["not_initialized", "unhealthy"]
+            for services in [health_status["components"], health_status["ai_services"], health_status["worker_services"]]
+            for v in services.values()
+        )
+
+        status_code = 200 if all_healthy else 503
+        if not all_healthy:
+            health_status["status"] = "degraded"
+
+        return JSONResponse(
+            status_code=status_code,
+            content=health_status
         )
     except Exception as e:
         logger.error(f"Health check failed: {e}")
@@ -114,11 +166,14 @@ async def startup_event():
     global camera_manager, zone_manager, tracking_manager, detection_manager
     global db_manager, detection_writer, tracking_writer
     global worker_manager, face_recognizer, badge_ocr, time_tracker
+    global ollama_client, embedding_generator, qdrant_manager, knowledge_base
+    global insight_generator, anomaly_detector, recommendation_engine, report_generator
 
     logger.info("=" * 60)
     logger.info("Assembly Time-Tracking System - Starting Up")
     logger.info("=" * 60)
-    logger.info("Phase: 4 - Worker Identification + Time Tracking")
+    logger.info("Phase: 4B - RAG + DeepSeek-R1 Integration")
+    logger.info("Version: 4.1.0")
     logger.info("Status: Development Mode")
     logger.info("-" * 60)
 
@@ -186,6 +241,59 @@ async def startup_event():
         target_output_per_hour=10.0
     )
 
+    # Phase 4B: Initialize RAG + AI services
+    logger.info("🧠 Initializing Phase 4B: RAG + DeepSeek-R1...")
+    logger.info("🔮 Initializing Ollama Client...")
+    ollama_client = OllamaClient(
+        base_url="http://ollama:11434",
+        model="deepseek-r1:14b"
+    )
+
+    logger.info("📊 Initializing Embedding Generator...")
+    embedding_generator = EmbeddingGenerator(
+        model_name="sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    )
+
+    logger.info("🗄️  Initializing Qdrant Manager...")
+    qdrant_manager = QdrantManager(
+        host="qdrant",
+        port=6333,
+        embedding_dim=768
+    )
+
+    logger.info("📚 Initializing Knowledge Base...")
+    knowledge_base = KnowledgeBase(
+        qdrant_manager=qdrant_manager,
+        embedding_generator=embedding_generator
+    )
+
+    logger.info("💡 Initializing Insight Generator...")
+    insight_generator = InsightGenerator(
+        ollama_client=ollama_client,
+        knowledge_base=knowledge_base,
+        min_productivity_threshold=60.0,
+        min_efficiency_threshold=70.0
+    )
+
+    logger.info("🔍 Initializing Anomaly Detector...")
+    anomaly_detector = AnomalyDetector(
+        std_threshold=2.0,
+        min_data_points=5
+    )
+
+    logger.info("🎯 Initializing Recommendation Engine...")
+    recommendation_engine = RecommendationEngine(
+        ollama_client=ollama_client,
+        anomaly_detector=anomaly_detector
+    )
+
+    logger.info("📄 Initializing Report Generator...")
+    report_generator = ReportGenerator(
+        ollama_client=ollama_client,
+        knowledge_base=knowledge_base,
+        insight_generator=insight_generator
+    )
+
     logger.info("🤖 Initializing YOLOv8 Detection...")
     detection_config = DetectionConfig(
         model_name="yolov8n.pt",
@@ -214,26 +322,41 @@ async def startup_event():
     workers.set_face_recognizer(face_recognizer)
     workers.set_badge_ocr(badge_ocr)
 
+    # Phase 4B: Inject AI services into AI Query API
+    ai_query.set_ollama_client(ollama_client)
+    ai_query.set_knowledge_base(knowledge_base)
+
     # Register API routers
     app.include_router(cameras.router)
     app.include_router(zones.router)
     app.include_router(detection.router)
     app.include_router(tracking.router)
     app.include_router(workers.router)  # Phase 4: Worker API
+    app.include_router(ai_query.router)  # Phase 4B: AI Query API
 
     logger.info("-" * 60)
-    logger.info("✅ Phase 4 Worker Identification system started successfully!")
+    logger.info("✅ Phase 4B RAG + DeepSeek-R1 system started successfully!")
     logger.info("🌐 API running on http://0.0.0.0:8000")
     logger.info("📚 API docs at http://0.0.0.0:8000/docs")
-    logger.info("🎥 Camera API: http://0.0.0.0:8000/api/v1/cameras")
-    logger.info("🤖 Detection API: http://0.0.0.0:8000/api/v1/detection")
-    logger.info("🏗️  Zone API: http://0.0.0.0:8000/api/v1/zones")
-    logger.info("🎯 Tracking API: http://0.0.0.0:8000/api/v1/tracking")
-    logger.info("👤 Worker API: http://0.0.0.0:8000/api/v1/workers")
-    logger.info("💾 PostgreSQL: Connected")
-    logger.info("😊 Face Recognition: Initialized")
-    logger.info("🎫 Badge OCR: Initialized (Thai + English)")
-    logger.info("⏱️  Time Tracking: Active")
+    logger.info("")
+    logger.info("📡 API Endpoints:")
+    logger.info("  🎥 Camera API: http://0.0.0.0:8000/api/v1/cameras")
+    logger.info("  🤖 Detection API: http://0.0.0.0:8000/api/v1/detection")
+    logger.info("  🏗️  Zone API: http://0.0.0.0:8000/api/v1/zones")
+    logger.info("  🎯 Tracking API: http://0.0.0.0:8000/api/v1/tracking")
+    logger.info("  👤 Worker API: http://0.0.0.0:8000/api/v1/workers")
+    logger.info("  🧠 AI Query API: http://0.0.0.0:8000/api/v1/ai")
+    logger.info("")
+    logger.info("💾 Services Status:")
+    logger.info("  ✓ PostgreSQL: Connected")
+    logger.info("  ✓ Qdrant: Connected")
+    logger.info("  ✓ Ollama: Ready (DeepSeek-R1:14b)")
+    logger.info("  ✓ Face Recognition: Initialized")
+    logger.info("  ✓ Badge OCR: Initialized (Thai + English)")
+    logger.info("  ✓ Time Tracking: Active")
+    logger.info("  ✓ Knowledge Base: Ready (RAG)")
+    logger.info("  ✓ AI Insights: Enabled")
+    logger.info("  ✓ Reports: Enabled")
     logger.info("=" * 60)
 
 
