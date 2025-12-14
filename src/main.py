@@ -42,8 +42,15 @@ from insights.anomaly_detector import AnomalyDetector
 from insights.recommendation_engine import RecommendationEngine
 from reports.report_generator import ReportGenerator
 
+# Phase 4C: Advanced Analytics
+from analytics.realtime_analytics import RealtimeAnalytics
+from analytics.predictive_analytics import PredictiveAnalytics
+from analytics.visualization_data import VisualizationData
+from analytics.benchmarking import Benchmarking
+from analytics.export_manager import ExportManager
+
 # Import API routers
-from api.v1 import cameras, detection, zones, tracking, workers, ai_query
+from api.v1 import cameras, detection, zones, tracking, workers, ai_query, analytics, websocket
 
 # Global managers
 camera_manager = None
@@ -70,11 +77,18 @@ anomaly_detector = None
 recommendation_engine = None
 report_generator = None
 
+# Phase 4C: Advanced Analytics managers
+realtime_analytics = None
+predictive_analytics = None
+visualization_data = None
+benchmarking = None
+export_manager = None
+
 # Application instance
 app = FastAPI(
     title="Assembly Time-Tracking System",
-    description="Real-time worker tracking with AI-powered insights via RAG + DeepSeek-R1. Features: Face/Badge recognition, time tracking, natural language queries (Thai/English), automated insights and reports.",
-    version="4.1.0"
+    description="Real-time worker tracking with AI-powered insights and advanced analytics. Features: Face/Badge recognition, time tracking, RAG + DeepSeek-R1, real-time dashboards, predictive analytics, benchmarking, and data export.",
+    version="4.2.0"
 )
 
 # CORS middleware
@@ -92,16 +106,21 @@ async def root():
     """Root endpoint"""
     return {
         "message": "Assembly Time-Tracking System",
-        "version": "4.1.0",
+        "version": "4.2.0",
         "status": "running",
-        "phase": "Phase 4B - RAG + DeepSeek-R1 Integration",
+        "phase": "Phase 4C - Advanced Analytics",
         "features": [
             "Worker Identification (Face + Badge)",
             "Time Tracking & Productivity",
             "RAG Knowledge Base (Qdrant)",
             "AI-Powered Insights (DeepSeek-R1)",
             "Natural Language Queries (Thai/English)",
-            "Automated Reports"
+            "Automated Reports",
+            "Real-time Analytics (WebSocket)",
+            "Predictive Analytics (Forecasting)",
+            "Advanced Visualizations (Heatmaps, Charts)",
+            "Performance Benchmarking",
+            "Data Export (JSON/CSV)"
         ]
     }
 
@@ -168,12 +187,13 @@ async def startup_event():
     global worker_manager, face_recognizer, badge_ocr, time_tracker
     global ollama_client, embedding_generator, qdrant_manager, knowledge_base
     global insight_generator, anomaly_detector, recommendation_engine, report_generator
+    global realtime_analytics, predictive_analytics, visualization_data, benchmarking, export_manager
 
     logger.info("=" * 60)
     logger.info("Assembly Time-Tracking System - Starting Up")
     logger.info("=" * 60)
-    logger.info("Phase: 4B - RAG + DeepSeek-R1 Integration")
-    logger.info("Version: 4.1.0")
+    logger.info("Phase: 4C - Advanced Analytics")
+    logger.info("Version: 4.2.0")
     logger.info("Status: Development Mode")
     logger.info("-" * 60)
 
@@ -294,6 +314,24 @@ async def startup_event():
         insight_generator=insight_generator
     )
 
+    # Phase 4C: Initialize Advanced Analytics
+    logger.info("📈 Initializing Phase 4C: Advanced Analytics...")
+    logger.info("🔴 Initializing Real-time Analytics...")
+    realtime_analytics = RealtimeAnalytics()
+    await realtime_analytics.start()
+
+    logger.info("🔮 Initializing Predictive Analytics...")
+    predictive_analytics = PredictiveAnalytics()
+
+    logger.info("📊 Initializing Visualization Data...")
+    visualization_data = VisualizationData()
+
+    logger.info("🎯 Initializing Benchmarking...")
+    benchmarking = Benchmarking()
+
+    logger.info("💾 Initializing Export Manager...")
+    export_manager = ExportManager()
+
     logger.info("🤖 Initializing YOLOv8 Detection...")
     detection_config = DetectionConfig(
         model_name="yolov8n.pt",
@@ -326,6 +364,15 @@ async def startup_event():
     ai_query.set_ollama_client(ollama_client)
     ai_query.set_knowledge_base(knowledge_base)
 
+    # Phase 4C: Inject Advanced Analytics services
+    analytics.set_realtime_analytics(realtime_analytics)
+    analytics.set_predictive_analytics(predictive_analytics)
+    analytics.set_visualization_data(visualization_data)
+    analytics.set_benchmarking(benchmarking)
+    analytics.set_export_manager(export_manager)
+
+    websocket.set_realtime_analytics(realtime_analytics)
+
     # Register API routers
     app.include_router(cameras.router)
     app.include_router(zones.router)
@@ -333,9 +380,11 @@ async def startup_event():
     app.include_router(tracking.router)
     app.include_router(workers.router)  # Phase 4: Worker API
     app.include_router(ai_query.router)  # Phase 4B: AI Query API
+    app.include_router(analytics.router)  # Phase 4C: Analytics API
+    app.include_router(websocket.router)  # Phase 4C: WebSocket API
 
     logger.info("-" * 60)
-    logger.info("✅ Phase 4B RAG + DeepSeek-R1 system started successfully!")
+    logger.info("✅ Phase 4C Advanced Analytics system started successfully!")
     logger.info("🌐 API running on http://0.0.0.0:8000")
     logger.info("📚 API docs at http://0.0.0.0:8000/docs")
     logger.info("")
@@ -346,6 +395,8 @@ async def startup_event():
     logger.info("  🎯 Tracking API: http://0.0.0.0:8000/api/v1/tracking")
     logger.info("  👤 Worker API: http://0.0.0.0:8000/api/v1/workers")
     logger.info("  🧠 AI Query API: http://0.0.0.0:8000/api/v1/ai")
+    logger.info("  📈 Analytics API: http://0.0.0.0:8000/api/v1/analytics")
+    logger.info("  🔴 WebSocket: ws://0.0.0.0:8000/ws/analytics")
     logger.info("")
     logger.info("💾 Services Status:")
     logger.info("  ✓ PostgreSQL: Connected")
@@ -357,6 +408,11 @@ async def startup_event():
     logger.info("  ✓ Knowledge Base: Ready (RAG)")
     logger.info("  ✓ AI Insights: Enabled")
     logger.info("  ✓ Reports: Enabled")
+    logger.info("  ✓ Real-time Analytics: Active")
+    logger.info("  ✓ Predictive Analytics: Ready")
+    logger.info("  ✓ Visualization Data: Ready")
+    logger.info("  ✓ Benchmarking: Ready")
+    logger.info("  ✓ Export Manager: Ready")
     logger.info("=" * 60)
 
 
