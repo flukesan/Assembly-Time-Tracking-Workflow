@@ -12,6 +12,8 @@ from loguru import logger
 from analytics.realtime_analytics import RealtimeAnalytics, EventType
 from analytics.predictive_analytics import PredictiveAnalytics
 from analytics.visualization_data import VisualizationData
+from analytics.benchmarking import Benchmarking
+from analytics.export_manager import ExportManager
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
@@ -19,6 +21,8 @@ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 realtime_analytics: Optional[RealtimeAnalytics] = None
 predictive_analytics: Optional[PredictiveAnalytics] = None
 visualization_data: Optional[VisualizationData] = None
+benchmarking: Optional[Benchmarking] = None
+export_manager: Optional[ExportManager] = None
 
 
 def set_realtime_analytics(analytics: RealtimeAnalytics):
@@ -37,6 +41,18 @@ def set_visualization_data(viz_data: VisualizationData):
     """Inject visualization data instance"""
     global visualization_data
     visualization_data = viz_data
+
+
+def set_benchmarking(bench: Benchmarking):
+    """Inject benchmarking instance"""
+    global benchmarking
+    benchmarking = bench
+
+
+def set_export_manager(export_mgr: ExportManager):
+    """Inject export manager instance"""
+    global export_manager
+    export_manager = export_mgr
 
 
 # Pydantic models
@@ -695,4 +711,89 @@ async def generate_gauge(
 
     except Exception as e:
         logger.error(f"Error generating gauge chart: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Benchmarking Endpoints
+# ============================================================================
+
+@router.post("/benchmark/compare")
+async def compare_to_benchmark(
+    current_value: float = Query(..., description="Current value"),
+    metric_name: str = Query(..., description="Metric name"),
+    benchmark_value: Optional[float] = Query(None, description="Benchmark value")
+):
+    """Compare current value to benchmark"""
+    if not benchmarking:
+        raise HTTPException(status_code=503, detail="Benchmarking not initialized")
+
+    try:
+        result = benchmarking.compare_to_benchmark(current_value, metric_name, benchmark_value)
+        return {
+            "current_value": result.current_value,
+            "benchmark_value": result.benchmark_value,
+            "difference": result.difference,
+            "difference_percent": result.difference_percent,
+            "performance_level": result.performance_level
+        }
+    except Exception as e:
+        logger.error(f"Error comparing to benchmark: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/benchmark/historical")
+async def compare_to_historical(
+    current_value: float,
+    historical_values: List[float],
+    comparison_period: str = Query("all", description="Comparison period")
+):
+    """Compare to historical performance"""
+    if not benchmarking:
+        raise HTTPException(status_code=503, detail="Benchmarking not initialized")
+
+    try:
+        return benchmarking.compare_to_historical(current_value, historical_values, comparison_period)
+    except Exception as e:
+        logger.error(f"Error comparing to historical: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Export Endpoints
+# ============================================================================
+
+@router.post("/export/json")
+async def export_json(data: Dict[str, Any], pretty: bool = Query(True)):
+    """Export data to JSON format"""
+    if not export_manager:
+        raise HTTPException(status_code=503, detail="Export manager not initialized")
+
+    try:
+        json_content = export_manager.export_to_json(data, pretty)
+        return export_manager.create_download_response(
+            content=json_content,
+            filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            content_type="application/json"
+        )
+    except Exception as e:
+        logger.error(f"Error exporting JSON: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/export/csv")
+async def export_csv(data: List[Dict[str, Any]], columns: Optional[List[str]] = None):
+    """Export data to CSV format"""
+    if not export_manager:
+        raise HTTPException(status_code=503, detail="Export manager not initialized")
+
+    try:
+        csv_content = export_manager.export_to_csv(data, columns)
+        return export_manager.create_download_response(
+            content=csv_content,
+            filename=f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            content_type="text/csv"
+        )
+    except Exception as e:
+        logger.error(f"Error exporting CSV: {e}")
         raise HTTPException(status_code=500, detail=str(e))
