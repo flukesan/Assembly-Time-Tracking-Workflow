@@ -17,6 +17,9 @@ RUN apt-get update && apt-get install -y \
     python3.11-distutils \
     python3-pip \
     build-essential \
+    gcc \
+    g++ \
+    gfortran \
     # Database
     libpq-dev \
     # OpenCV dependencies
@@ -46,8 +49,9 @@ RUN apt-get update && apt-get install -y \
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
     && update-alternatives --set python3 /usr/bin/python3.11
 
-# Upgrade pip
-RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+# Install pip for Python 3.11
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Set working directory
 WORKDIR /app
@@ -56,20 +60,20 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install numpy and Cython first (required by lap package)
-RUN python3 -m pip install --no-cache-dir numpy==1.26.3 Cython
+RUN python3.11 -m pip install --no-cache-dir numpy==1.26.3 Cython
 
 # Install lap with setuptools < 60.0 (for numpy.distutils compatibility)
-RUN python3 -m pip install --no-cache-dir "setuptools<60.0" && \
-    python3 -m pip install --no-cache-dir --no-build-isolation lap==0.4.0
+RUN python3.11 -m pip install --no-cache-dir "setuptools<60.0" && \
+    python3.11 -m pip install --no-cache-dir --no-build-isolation lap==0.4.0
 
 # Install PyTorch CPU version (override default CUDA version)
-RUN python3 -m pip install --no-cache-dir \
+RUN python3.11 -m pip install --no-cache-dir \
     torch==2.1.2+cpu \
     torchvision==0.16.2+cpu \
     --index-url https://download.pytorch.org/whl/cpu
 
 # Install remaining Python dependencies (skip torch/torchvision as already installed)
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY src/ ./src/
@@ -83,7 +87,7 @@ EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD python3 -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+  CMD python3.11 -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
 
 # Start application
-CMD ["python3", "src/main.py"]
+CMD ["python3.11", "src/main.py"]
