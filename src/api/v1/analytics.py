@@ -10,17 +10,25 @@ from datetime import datetime, timedelta
 from loguru import logger
 
 from analytics.realtime_analytics import RealtimeAnalytics, EventType
+from analytics.predictive_analytics import PredictiveAnalytics
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
 # Global instances (will be injected)
 realtime_analytics: Optional[RealtimeAnalytics] = None
+predictive_analytics: Optional[PredictiveAnalytics] = None
 
 
 def set_realtime_analytics(analytics: RealtimeAnalytics):
     """Inject real-time analytics instance"""
     global realtime_analytics
     realtime_analytics = analytics
+
+
+def set_predictive_analytics(analytics: PredictiveAnalytics):
+    """Inject predictive analytics instance"""
+    global predictive_analytics
+    predictive_analytics = analytics
 
 
 # Pydantic models
@@ -241,4 +249,225 @@ async def test_event(
         raise
     except Exception as e:
         logger.error(f"Error publishing test event: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Predictive Analytics Endpoints
+# ============================================================================
+
+@router.post("/predict/productivity")
+async def predict_productivity(
+    historical_data: List[float] = Query(..., description="Historical productivity values"),
+    forecast_days: int = Query(7, ge=1, le=30, description="Days to forecast")
+):
+    """
+    Forecast future productivity values
+
+    Args:
+        historical_data: List of historical productivity values (time-ordered)
+        forecast_days: Number of days to forecast (1-30)
+
+    Returns:
+        Productivity forecast with confidence intervals
+    """
+    if not predictive_analytics:
+        raise HTTPException(status_code=503, detail="Predictive analytics not initialized")
+
+    try:
+        forecasts = predictive_analytics.forecast_productivity(
+            historical_data=historical_data,
+            forecast_days=forecast_days
+        )
+
+        return {
+            "forecast_days": forecast_days,
+            "forecasts": [
+                {
+                    "day": i + 1,
+                    "date": f.forecast_date.strftime("%Y-%m-%d") if f.forecast_date else None,
+                    "predicted_value": round(f.predicted_value, 2),
+                    "confidence_lower": round(f.confidence_lower, 2),
+                    "confidence_upper": round(f.confidence_upper, 2),
+                    "model": f.model_type
+                }
+                for i, f in enumerate(forecasts)
+            ],
+            "historical_mean": round(sum(historical_data) / len(historical_data), 2),
+            "data_points": len(historical_data)
+        }
+
+    except Exception as e:
+        logger.error(f"Error predicting productivity: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/predict/output")
+async def predict_output(
+    historical_output: List[int] = Query(..., description="Historical output values"),
+    forecast_days: int = Query(7, ge=1, le=30, description="Days to forecast")
+):
+    """
+    Forecast future output values
+
+    Args:
+        historical_output: List of historical output values (units produced)
+        forecast_days: Number of days to forecast (1-30)
+
+    Returns:
+        Output forecast with confidence intervals
+    """
+    if not predictive_analytics:
+        raise HTTPException(status_code=503, detail="Predictive analytics not initialized")
+
+    try:
+        forecasts = predictive_analytics.forecast_output(
+            historical_output=historical_output,
+            forecast_days=forecast_days
+        )
+
+        return {
+            "forecast_days": forecast_days,
+            "forecasts": [
+                {
+                    "day": i + 1,
+                    "date": f.forecast_date.strftime("%Y-%m-%d") if f.forecast_date else None,
+                    "predicted_value": int(f.predicted_value),
+                    "confidence_lower": int(f.confidence_lower),
+                    "confidence_upper": int(f.confidence_upper),
+                    "model": f.model_type
+                }
+                for i, f in enumerate(forecasts)
+            ],
+            "historical_mean": round(sum(historical_output) / len(historical_output), 2),
+            "total_historical_output": sum(historical_output),
+            "data_points": len(historical_output)
+        }
+
+    except Exception as e:
+        logger.error(f"Error predicting output: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze/trend")
+async def analyze_trend(
+    time_series_data: List[float] = Query(..., description="Time-series data"),
+    data_type: str = Query("productivity", description="Type of data")
+):
+    """
+    Analyze trend in time-series data
+
+    Args:
+        time_series_data: Time-ordered data points
+        data_type: Type of data (productivity, output, efficiency)
+
+    Returns:
+        Trend analysis with predictions
+    """
+    if not predictive_analytics:
+        raise HTTPException(status_code=503, detail="Predictive analytics not initialized")
+
+    try:
+        trend_analysis = predictive_analytics.analyze_trend(
+            time_series_data=time_series_data,
+            data_type=data_type
+        )
+
+        return {
+            "data_type": data_type,
+            "trend": trend_analysis.trend,
+            "slope": round(trend_analysis.slope, 4),
+            "r_squared": round(trend_analysis.r_squared, 4),
+            "prediction_7days": round(trend_analysis.prediction_7days, 2),
+            "prediction_30days": round(trend_analysis.prediction_30days, 2),
+            "data_points": len(time_series_data),
+            "interpretation": {
+                "trend_strength": "strong" if trend_analysis.r_squared > 0.7 else "moderate" if trend_analysis.r_squared > 0.4 else "weak",
+                "trend_description": f"The {data_type} is {trend_analysis.trend} with a {'strong' if trend_analysis.r_squared > 0.7 else 'moderate' if trend_analysis.r_squared > 0.4 else 'weak'} trend."
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error analyzing trend: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/predict/anomaly")
+async def predict_anomaly(
+    current_value: float = Query(..., description="Current value to check"),
+    historical_data: List[float] = Query(..., description="Historical data"),
+    threshold_std: float = Query(2.0, description="Standard deviation threshold")
+):
+    """
+    Predict anomaly probability
+
+    Args:
+        current_value: Current value to check
+        historical_data: Historical values for comparison
+        threshold_std: Standard deviation threshold (default 2.0)
+
+    Returns:
+        Anomaly prediction with probability and details
+    """
+    if not predictive_analytics:
+        raise HTTPException(status_code=503, detail="Predictive analytics not initialized")
+
+    try:
+        prediction = predictive_analytics.predict_anomaly_probability(
+            current_value=current_value,
+            historical_data=historical_data,
+            threshold_std=threshold_std
+        )
+
+        return {
+            "current_value": current_value,
+            "threshold_std": threshold_std,
+            **prediction
+        }
+
+    except Exception as e:
+        logger.error(f"Error predicting anomaly: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/predict/worker-performance")
+async def predict_worker_performance(
+    worker_id: str = Query(..., description="Worker ID"),
+    worker_history: List[Dict[str, Any]] = Query(..., description="Worker history"),
+    forecast_days: int = Query(7, ge=1, le=30, description="Days to forecast")
+):
+    """
+    Predict worker performance for upcoming days
+
+    Args:
+        worker_id: Worker ID
+        worker_history: List of historical productivity records
+        forecast_days: Number of days to forecast
+
+    Returns:
+        Comprehensive performance prediction
+    """
+    if not predictive_analytics:
+        raise HTTPException(status_code=503, detail="Predictive analytics not initialized")
+
+    try:
+        prediction = predictive_analytics.predict_worker_performance(
+            worker_history=worker_history,
+            forecast_days=forecast_days
+        )
+
+        if "error" in prediction:
+            raise HTTPException(status_code=400, detail=prediction["error"])
+
+        return {
+            "worker_id": worker_id,
+            "forecast_days": forecast_days,
+            "data_points": len(worker_history),
+            **prediction
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error predicting worker performance: {e}")
         raise HTTPException(status_code=500, detail=str(e))
