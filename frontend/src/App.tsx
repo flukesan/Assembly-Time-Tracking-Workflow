@@ -3,9 +3,9 @@ import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import Workers from './pages/Workers'
 import WorkerDetail from './pages/WorkerDetail'
+import Analytics from './pages/Analytics'
 
 // Placeholder pages
-const Analytics = () => <div className="p-6"><h1 className="text-2xl font-bold">Analytics</h1></div>
 const Reports = () => <div className="p-6"><h1 className="text-2xl font-bold">Reports</h1></div>
 
 function App() {
