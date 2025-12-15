@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
 
 // Placeholder pages
-const Dashboard = () => <div className="p-6"><h1 className="text-2xl font-bold">Dashboard</h1></div>
 const Workers = () => <div className="p-6"><h1 className="text-2xl font-bold">Workers</h1></div>
 const Analytics = () => <div className="p-6"><h1 className="text-2xl font-bold">Analytics</h1></div>
 const Reports = () => <div className="p-6"><h1 className="text-2xl font-bold">Reports</h1></div>
