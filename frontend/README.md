@@ -240,6 +240,111 @@ server: { port: 3001 }
 - Check VITE_WS_URL in .env
 - Check browser console for connection errors
 
+## Production Deployment
+
+### Docker Deployment
+
+Build and run with Docker:
+
+```bash
+# Build Docker image
+docker build -t assembly-tracking-frontend .
+
+# Run container
+docker run -d \
+  --name assembly-frontend \
+  -p 80:80 \
+  assembly-tracking-frontend
+
+# Check health
+curl http://localhost/health
+```
+
+### Docker Compose
+
+Using docker-compose (with backend):
+
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f frontend
+
+# Stop services
+docker-compose down
+```
+
+### Manual Production Build
+
+Build and serve with nginx:
+
+```bash
+# 1. Build production bundle
+npm run build
+
+# 2. Copy dist/ to web server
+cp -r dist/* /var/www/html/
+
+# 3. Configure nginx (use nginx.conf as template)
+sudo cp nginx.conf /etc/nginx/sites-available/assembly-tracking
+sudo ln -s /etc/nginx/sites-available/assembly-tracking /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Environment Configuration
+
+For production, create `.env.production`:
+
+```bash
+# Copy template
+cp .env.production.example .env.production
+
+# Edit with production values
+VITE_API_URL=https://api.yourdomain.com
+VITE_WS_URL=wss://api.yourdomain.com
+VITE_APP_ENV=production
+```
+
+### Build Optimization
+
+The production build includes:
+- ✅ Code minification and tree-shaking
+- ✅ CSS optimization with TailwindCSS purge
+- ✅ Asset optimization and compression
+- ✅ Source maps for debugging
+- ✅ Cache-busting with content hashes
+- ✅ Gzip compression in nginx
+- ✅ Security headers
+
+### Performance
+
+Expected performance metrics:
+- **Bundle Size**: ~150-200 KB (gzipped)
+- **First Load**: <2s on 3G
+- **Lighthouse Score**: 90+
+- **WebSocket Latency**: <100ms
+
+### Monitoring
+
+Health check endpoint:
+```bash
+curl http://localhost/health
+# Response: "healthy"
+```
+
+Docker healthcheck runs every 30s automatically.
+
+### Security
+
+Production security features:
+- HTTPS only (configure in nginx)
+- Security headers (X-Frame-Options, CSP, etc.)
+- API proxy to avoid CORS
+- WebSocket over TLS (WSS)
+- Environment variable validation
+
 ## License
 
 Internal use only - Assembly Time-Tracking System
