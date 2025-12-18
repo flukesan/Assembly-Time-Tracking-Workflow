@@ -393,32 +393,44 @@ class ByteTracker:
         # Compute IoU matrix
         iou_matrix = self._iou_distance(tracks, detections)
 
-        # Linear assignment
+        # Linear assignment - try multiple methods
         try:
+            # Method 1: Try lap package (optimal but requires compilation)
             import lap
             cost_matrix = 1 - iou_matrix
             _, x, y = lap.lapjv(cost_matrix, extend_cost=True, cost_limit=1 - thresh)
             matches = [[ix, mx] for ix, mx in enumerate(x) if mx >= 0]
         except ImportError:
-            # Fallback to greedy matching
-            matches = []
-            used_tracks = set()
-            used_detections = set()
+            try:
+                # Method 2: Use scipy.optimize (optimal, no compilation needed)
+                from scipy.optimize import linear_sum_assignment
+                cost_matrix = 1 - iou_matrix
 
-            # Sort by IoU (descending)
-            ious = []
-            for i in range(len(tracks)):
-                for j in range(len(detections)):
-                    if iou_matrix[i, j] >= thresh:
-                        ious.append((iou_matrix[i, j], i, j))
+                # Apply threshold by setting high cost for low IoU
+                cost_matrix[iou_matrix < thresh] = 1.0
 
-            ious.sort(reverse=True)
+                row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                matches = [[i, j] for i, j in zip(row_ind, col_ind) if iou_matrix[i, j] >= thresh]
+            except (ImportError, Exception):
+                # Method 3: Fallback to greedy matching (suboptimal but always works)
+                matches = []
+                used_tracks = set()
+                used_detections = set()
 
-            for _, i, j in ious:
-                if i not in used_tracks and j not in used_detections:
-                    matches.append([i, j])
-                    used_tracks.add(i)
-                    used_detections.add(j)
+                # Sort by IoU (descending)
+                ious = []
+                for i in range(len(tracks)):
+                    for j in range(len(detections)):
+                        if iou_matrix[i, j] >= thresh:
+                            ious.append((iou_matrix[i, j], i, j))
+
+                ious.sort(reverse=True)
+
+                for _, i, j in ious:
+                    if i not in used_tracks and j not in used_detections:
+                        matches.append([i, j])
+                        used_tracks.add(i)
+                        used_detections.add(j)
 
         matches = np.array(matches)
 

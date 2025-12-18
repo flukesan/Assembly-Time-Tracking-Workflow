@@ -60,20 +60,16 @@ WORKDIR /app
 # Copy requirements first (for better caching)
 COPY requirements.txt .
 
-# Install numpy and Cython first (required by lap package)
-RUN python3.11 -m pip install --no-cache-dir numpy==1.26.3 Cython
-
-# Install lap with setuptools < 60.0 (for numpy.distutils compatibility)
-RUN python3.11 -m pip install --no-cache-dir "setuptools<60.0" && \
-    python3.11 -m pip install --no-cache-dir --no-build-isolation lap==0.4.0
-
-# Install PyTorch CPU version (override default CUDA version)
+# Install PyTorch CPU version first (override default CUDA version in requirements.txt)
+# This significantly reduces image size (~4GB CUDA -> ~200MB CPU)
 RUN python3.11 -m pip install --no-cache-dir \
     torch==2.1.2+cpu \
     torchvision==0.16.2+cpu \
     --index-url https://download.pytorch.org/whl/cpu
 
-# Install remaining Python dependencies (skip torch/torchvision as already installed)
+# Install remaining Python dependencies
+# Note: lap package is intentionally skipped - ByteTrack will use scipy.optimize.linear_sum_assignment
+#       as a fallback which provides the same optimal solution without compilation requirements
 RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
