@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.2.0-runtime-ubuntu22.04
+FROM ubuntu:22.04
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -10,14 +10,17 @@ ENV PYTHONUNBUFFERED=1 \
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     # Python
+    software-properties-common \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
+    python3.11-distutils \
     python3-pip \
-    # Build tools (required for lap package)
     build-essential \
     gcc \
     g++ \
-    cmake \
+    gfortran \
     # Database
     libpq-dev \
     # OpenCV dependencies
@@ -43,8 +46,13 @@ RUN apt-get update && apt-get install -y \
     htop \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip using Python 3.11
-RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+    && update-alternatives --set python3 /usr/bin/python3.11
+
+# Install pip for Python 3.11
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.11 \
+    && python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel
 
 # Set working directory
 WORKDIR /app
@@ -56,11 +64,16 @@ COPY requirements.txt .
 RUN python3.11 -m pip install --no-cache-dir numpy==1.26.3 Cython
 
 # Install lap with setuptools < 60.0 (for numpy.distutils compatibility)
-# Using older setuptools version to support numpy.distutils which lap depends on
 RUN python3.11 -m pip install --no-cache-dir "setuptools<60.0" && \
     python3.11 -m pip install --no-cache-dir --no-build-isolation lap==0.4.0
 
-# Install remaining Python dependencies
+# Install PyTorch CPU version (override default CUDA version)
+RUN python3.11 -m pip install --no-cache-dir \
+    torch==2.1.2+cpu \
+    torchvision==0.16.2+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining Python dependencies (skip torch/torchvision as already installed)
 RUN python3.11 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
