@@ -4,7 +4,8 @@ FROM ubuntu:22.04
 ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
-    LC_ALL=C.UTF-8
+    LC_ALL=C.UTF-8 \
+    SETUPTOOLS_USE_DISTUTILS=stdlib
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
